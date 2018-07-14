@@ -25,7 +25,7 @@ class TextCNN(object):
         self.dropout_keep_prob = tf.placeholder(tf.float32, name='dropout_keep_prob')
 
         # Keeping track of l2 regularization loss
-        l2_loss = tf.constant(0.0)
+        l2_regular = tf.constant(0.0)
 
         # Embedding layer
         with tf.device('/gpu:0'), tf.name_scope('embedding'):
@@ -55,7 +55,7 @@ class TextCNN(object):
         self.flat = tf.layers.flatten(self.concat, name='flatten')
         print(self.concat)
 
-        # Fully link layer
+        # Fully link layer and output
         with tf.name_scope("fully_link"):
             fc_1 = tf.layers.dense(self.flat, 512, name='fc1')
             print(fc_1.shape)
@@ -73,20 +73,19 @@ class TextCNN(object):
             self.y_pred_cls = tf.argmax(tf.nn.softmax(self.logits), 1)  # 预测类别
 
         with tf.name_scope("optimize"):
-            # 损失函数，交叉熵
+            # Loss compute: cross entropy
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.input_y)
             self.loss = tf.reduce_mean(cross_entropy)
-            # 优化器
+            # Optimizer
             self.optim = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
 
         with tf.name_scope("accuracy"):
-            # 准确率
+            # Accuracy
             correct_pred = tf.equal(tf.argmax(self.input_y, 1), self.y_pred_cls)
             self.acc = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 
 if __name__ == '__main__':
-    
     # test of model initial
     model = TextCNN(max_length=100,
                     vocab_size=10000,
