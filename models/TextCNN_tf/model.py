@@ -3,7 +3,7 @@
 
 """
 @ author : Wanshan
-@ desc :
+@ desc : Model of textcnn ,tensorflow
 """
 
 import tensorflow as tf
