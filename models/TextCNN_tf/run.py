@@ -3,8 +3,7 @@
 
 """
 @ author : Wanshan
-@ time : 18-7-16 上午10:11
-@ desc :
+@ desc : Run TextCNN model(tensorflow)
 """
 
 import os
@@ -12,10 +11,12 @@ import sys
 import time
 from datetime import timedelta
 
+import numpy as np
 import tensorflow as tf
+from sklearn import metrics
 
 from models.TextCNN_tf.model import TextCNNConfig, TextCNN
-from preprocess import data_process
+from preprocess import data_process, batch_iter, label_category
 
 
 tensorboard_dir = './tensorboard_tectCNN/'
@@ -69,8 +70,8 @@ def train(model):
     # Loading trianing data and validation data
     print('Loading trianing data and validation data ...')
     start_time = time.time()
-    x_train, y_train = data_process(train_dir, word_to_id, label_to_id, config.max_length)
-    x_valid, y_valid = data_process(valid_dir, word_to_id, label_to_id, config.max_length)
+    x_train, y_train = data_process(train_dir, config.max_length)
+    x_valid, y_valid = data_process(valid_dir, config.max_length)
     time_dif = get_time_dif(start_time)
     print('Loading data ok!')
     print('Time usage: %f' % time_dif)
@@ -133,12 +134,53 @@ def train(model):
                 print("No optimization for a long time, auto-stopping...")
                 is_early_stop = True
                 break
-        if early_stop_batch:
+        if is_early_stop:
             break
 
 
-def inference():
-    pass
+def inference(model):
+    print("Loading test data...")
+    start_time = time.time()
+    x_test, y_test = data_process(valid_dir, config.seq_length)
+
+    # Create session and restore model checkpoint
+    session = tf.Session()
+    session.run(tf.global_variables_initializer())
+    saver = tf.train.Saver()
+    saver.restore(sess=session, save_path=saver_dir)
+
+    print('Testing...')
+    loss_test, acc_test = evaluate(session, x_test, y_test)
+    msg = 'Test Loss: {0:>6.2}, Test Acc: {1:>7.2%}'
+    print(msg.format(loss_test, acc_test))
+
+    # Generate data with batch
+    batch_size = 128
+    data_len = len(x_test)
+    num_batch = int((data_len - 1) / batch_size) + 1
+
+    y_test_cls = np.argmax(y_test, 1)
+    y_pred_cls = np.zeros(shape=len(x_test), dtype=np.int32)
+
+    for i in range(num_batch):
+        start_id = i * batch_size
+        end_id = min((i + 1) * batch_size, data_len)
+        feed_dict = {
+            model.input_x: x_test[start_id:end_id],
+            model.keep_prob: 1.0
+        }
+        y_pred_cls[start_id:end_id] = session.run(model.y_pred_cls, feed_dict=feed_dict)
+
+    # Evaluate
+    print("Precision, Recall and F1-Score...")
+    print(metrics.classification_report(y_test_cls, y_pred_cls, target_names=label_category))
+
+    # Print confusion matrix
+    print("Confusion Matrix...")
+    cm = metrics.confusion_matrix(y_test_cls, y_pred_cls)
+    print(cm)
+    time_dif = get_time_dif(start_time)
+    print("Time usage:", time_dif)
 
 
 if __name__ == '__main__':
