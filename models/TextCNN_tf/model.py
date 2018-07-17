@@ -10,6 +10,29 @@ import tensorflow as tf
 import numpy as np
 
 
+class TextCNNConfig(object):
+    """Config about text CNN"""
+
+    max_length = 100  # maximum length of input layer
+    embedding_dim = 256  # embedding size of word or char
+    vocab_size = 2000  # length of vocabulary
+    w2v_model = False  # if pre_train embedding or not
+
+    filter_szie = [3, 4, 5]  # different convolution size
+    num_filter = 128  # number of filter in each convolution
+
+    num_class = 10  # number of classification classes
+
+    dropout_keep_prob = 0.5  # dropout rate
+    learning_rate = 1e-3  # learning rate
+
+    batch_size = 128  # batch size
+    num_epochs = 25  # total epoch of training
+
+    print_per_batch = 10  # number of batch diff, print result
+    save_per_batch = 10  # number of batch diff: save result
+
+
 class TextCNN(object):
     """
     Text CNN for text classification.
@@ -55,7 +78,7 @@ class TextCNN(object):
         self.flat = tf.layers.flatten(self.concat, name='flatten')
         print(self.concat)
 
-        # Fully link layer and output
+        # Two fully link layer and output
         with tf.name_scope("fully_link"):
             fc_1 = tf.layers.dense(self.flat, 512, name='fc1')
             print(fc_1.shape)
@@ -70,7 +93,7 @@ class TextCNN(object):
             # output_layer
             self.logits = tf.layers.dense(actv_2, num_class, name='output')
             print(self.logits.shape)
-            self.y_pred_cls = tf.argmax(tf.nn.softmax(self.logits), 1)  # 预测类别
+            self.y_predict = tf.argmax(tf.nn.softmax(self.logits), 1)
 
         with tf.name_scope("optimize"):
             # Loss compute: cross entropy
@@ -81,18 +104,20 @@ class TextCNN(object):
 
         with tf.name_scope("accuracy"):
             # Accuracy
-            correct_pred = tf.equal(tf.argmax(self.input_y, 1), self.y_pred_cls)
+            correct_pred = tf.equal(tf.argmax(self.input_y, 1), self.y_predict)
             self.acc = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 
 if __name__ == '__main__':
+    # initial model config
+    text_cnn_config = TextCNNConfig()
+
     # test of model initial
-    model = TextCNN(max_length=100,
-                    vocab_size=10000,
-                    embedding_size=256,
-                    filter_size=[3, 4, 5],
-                    num_filter=128,
-                    num_class=10
-                    )
+    model = TextCNN(max_length=text_cnn_config.max_length,
+                    vocab_size=text_cnn_config.vocab_size,
+                    embedding_size=text_cnn_config.embedding_dim,
+                    filter_size=text_cnn_config.filter_szie,
+                    num_filter=text_cnn_config.num_filter,
+                    num_class=text_cnn_config.num_class)
 
 
